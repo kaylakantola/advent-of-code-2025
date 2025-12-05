@@ -62,45 +62,76 @@ class Rotator
   DEFAULT_STARTING_POSITION = 50
 
   attr_reader :all_positions, :starting_position
-  attr_accessor :end_positions
+  attr_accessor :end_positions, :times_passing_zero
 
   def initialize
     @all_positions = [*MIN_POSITION..MAX_POSITION]
     @starting_position = DEFAULT_STARTING_POSITION
     @end_positions = [starting_position]
+    @times_passing_zero = []
   end
 
   def complete_rotations(rotations)
-    rotations.each { |rotation| rotate(rotation) }
+    rotations.each { |n| rotate(current_position: end_positions.last, rotation_num: n) }
   end
 
   def num_zero_positions
     end_positions.count(&:zero?)
   end
 
-  private
-
-  def rotate(rotation_num)
-    new_index = get_new_position_index(rotation_num)
-
-    end_positions << all_positions[new_index]
+  def num_zero_clicks
+    times_passing_zero.sum
   end
 
-  def get_new_position_index(rotation_num)
-    current_position = end_positions.last
-    (current_position + rotation_num) % all_positions.length
+  private
+
+  def rotate(current_position:, rotation_num:)
+    loops, new_index = get_new_position_index(current_position, rotation_num)
+    end_positions << all_positions[new_index]
+
+    zero_count = count_zero_clicks(start_pos: current_position, end_pos: new_index, loops: loops.abs,
+                                   left_rotation: rotation_num.negative?)
+    times_passing_zero << zero_count
+  end
+
+  def get_new_position_index(current_position, rotation_num)
+    (current_position + rotation_num).divmod(all_positions.length)
+  end
+
+  def count_zero_clicks(start_pos:, end_pos:, loops:, left_rotation:)
+    zero_count = loops
+
+    if left_rotation
+      if start_pos.zero?
+        # Starting at 0 going left: subtract 1 (we start at 0 but don't land on it)
+        zero_count -= 1
+      elsif end_pos.zero?
+        # Ending at 0 going left: add 1 (we land on 0 but might not have wrapped)
+        zero_count += 1
+      end
+    end
+
+    zero_count
   end
 end
 
-INPUT_FILE = './input.txt'
+def solve(input_file)
+  puts "SOLVING FOR FILE: #{input_file}"
 
-def answer
-  raw_rotations = FileReader.new(INPUT_FILE).read_file_lines
+  raw_rotations = FileReader.new(input_file).read_file_lines
   rotations = RotationParser.new(raw_rotations).rotations
 
   rotator = Rotator.new
   rotator.complete_rotations(rotations)
-  rotator.num_zero_positions
+  part_1_answer = rotator.num_zero_positions
+
+  puts "PART 1 ANSWER: #{part_1_answer}"
+
+  part_2_answer = rotator.num_zero_clicks
+
+  puts "PART 2 ANSWER: #{part_2_answer}"
 end
 
-puts "ANSWER: #{answer}"
+INPUT_FILE = './input.txt'
+
+solve(INPUT_FILE)
