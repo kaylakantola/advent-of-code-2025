@@ -11,3 +11,9 @@ Run the following commands in a terminal from the root of the repository to see 
 ```shell
 ruby -w ./day_01/main.rb
 ```
+
+## Day Two
+
+```shell
+ruby -w ./day_02/main.rb
+```
