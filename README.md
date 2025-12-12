@@ -17,3 +17,9 @@ ruby -w ./day_01/main.rb
 ```shell
 ruby -w ./day_02/main.rb
 ```
+
+## Day Three
+
+```shell
+ruby -w ./day_03/main.rb
+```
