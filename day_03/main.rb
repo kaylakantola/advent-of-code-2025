@@ -45,11 +45,12 @@ class BatteryBankParser
   end
 end
 
-class PartOneSolver
-  attr_reader :battery_banks
+class Solver
+  attr_reader :battery_banks, :batteries_needed
 
-  def initialize(battery_banks)
+  def initialize(battery_banks, n_batteries)
     @battery_banks = battery_banks
+    @batteries_needed = n_batteries
   end
 
   def run
@@ -66,38 +67,51 @@ class PartOneSolver
   private
 
   def find_joltage_for_bank(battery_bank)
-    battery_a, battery_b = battery_bank.max(2)
+    result = []
+    start_idx = 0
 
-    # the greatest value in the array is last; the second-greatest is before it
-    # ex: 12341119
-    # battery_a = 9
-    # battery_b = 4
-    # max joltage = 49
-    return (battery_b.to_s + battery_a.to_s).to_i if battery_a == battery_bank.last
+    batteries_needed.times do |position|
+      next_max_battery = find_next_max_battery(battery_bank, position, start_idx)
 
-    battery_a_idx = battery_bank.index(battery_a)
-    battery_b_idx = battery_bank.index(battery_b)
+      result << next_max_battery[:value]
+      start_idx = next_max_battery[:index] + 1
+    end
 
-    # the greatest value in the array is before the second-greatest value
-    # ex: 12391141
-    # battery_a = 9
-    # battery_b = 4
-    # max joltage = 94
-    return (battery_a.to_s + battery_b.to_s).to_i if battery_a_idx < battery_b_idx
-
-    # the second-greatest value in the array is before the greatest value;
-    # we need to find the greatest value _after_ the greatest value
-    # ex: 12491121
-    # battery_a = 9
-    # battery_b = 4
-    # next_biggest_battery = 2
-    # max joltage = 92
-    start_idx = battery_bank.index(battery_a) + 1
-    remaining_batteries = battery_bank[start_idx..]
-    next_biggest_battery = remaining_batteries.max
-
-    (battery_a.to_s + next_biggest_battery.to_s).to_i
+    result.join.to_i
   end
+
+  def find_next_max_battery(battery_bank, position, start_idx)
+    bank_size = battery_bank.length
+
+    search_end = calculate_search_end(bank_size, position)
+
+    # Find the maximum digit in the valid range
+    search_range = battery_bank[start_idx...search_end]
+    max_digit = search_range.max
+
+    # Find the index of this max digit (relative to start_idx)
+    relative_idx = search_range.index(max_digit)
+    max_idx = start_idx + relative_idx
+
+    { index: max_idx, value: max_digit }
+  end
+end
+
+def calculate_search_end(bank_size, position)
+  # Calculate how far we can search while leaving room for remaining batteries
+  #
+  # Example: battery_bank = [4,5,6,7,8,4,3,9,3,1,1,1] (indices 0-11)
+  #   bank_size = 12
+  #   batteries_needed = 4
+  #   position = 2 (we've picked 2 batteries already, need 2 more including current)
+  #
+  #   After picking current battery, we still need: 4 - 2 - 1 = 1 more battery
+  #   If we pick battery at index 10, we have index [11] left (1 battery) ✓
+  #   If we pick battery at index 11, we have [] left (0 batteries) ✗
+  #   So we can search up to index 10 (inclusive), or [start_idx...11] (exclusive)
+  #
+  #   Formula: 12 - 4 + 2 + 1 = 11 (the exclusive end of our search range)
+  bank_size - batteries_needed + position + 1
 end
 
 def solve(input_file)
@@ -106,8 +120,11 @@ def solve(input_file)
   raw_battery_banks = FileReader.new(input_file).read_file_lines
   battery_banks = BatteryBankParser.new(raw_battery_banks).battery_banks
 
-  part_one = PartOneSolver.new(battery_banks).run
+  part_one = Solver.new(battery_banks, 2).run
   puts "Part 1 Sum: #{part_one}"
+
+  part_two = Solver.new(battery_banks, 12).run
+  puts "Part 2 Sum: #{part_two}"
 end
 
 INPUT_FILE = './input.txt'
